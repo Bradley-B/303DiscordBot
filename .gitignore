@@ -1,0 +1,5 @@
+/bin/
+*.ics
+.classpath
+.project
+.settings/
