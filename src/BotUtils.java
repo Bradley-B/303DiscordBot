@@ -8,8 +8,9 @@ import sx.blah.discord.util.RequestBuffer;
 public class BotUtils {
 
     // Constants for use throughout the bot
-    static String BOT_PREFIX = "!";
-
+    final static String BOT_PREFIX = "!";
+    final static String BOT_NAME = "calbot";
+    
     // Handles the creation and getting of a IDiscordClient object for a token
     static IDiscordClient getBuiltDiscordClient(String token){
 

@@ -1,9 +1,3 @@
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
 import java.text.ParseException;
 import java.util.Collections;
 import java.util.Comparator;
@@ -43,17 +37,6 @@ public class Utils {
 		DateTime eventDateTime = null;
 		try {eventDateTime = new DateTime(eventDate);} catch (ParseException e) {}
 		return eventDateTime;
-	}
-
-	public static void downloadFile(String url) throws IOException, MalformedURLException {
-		URL website = new URL(url);
-		ReadableByteChannel rbc = Channels.newChannel(website.openStream());
-		FileOutputStream fos = new FileOutputStream("basic.ics");
-		fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
-		fos.flush();
-
-		fos.close();
-		rbc.close();
 	}
 
 	public static String getPongWord() {
