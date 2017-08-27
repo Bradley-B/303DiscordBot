@@ -12,9 +12,7 @@ public class MainRunner {
         IDiscordClient cli = BotUtils.getBuiltDiscordClient(args[0]);
 
         // Register a listener via the EventSubscriber annotation which allows for organization and delegation of events
-        cli.getDispatcher().registerListener(new MyEvents());
-
-        cli.changePlayingText("your mom");
+        cli.getDispatcher().registerListener(new CommandHandler());
         
         // Only login after all events are registered otherwise some may be missed.
         cli.login();
