@@ -9,7 +9,13 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.text.ParseException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
 
 import net.fortuna.ical4j.data.CalendarBuilder;
 import net.fortuna.ical4j.data.ParserException;
@@ -36,6 +42,19 @@ public class CalendarManager {
 		} catch (IOException | ParserException e) {}
 	}
 	
+	public static ComponentList<CalendarComponent> sortEvents(ComponentList<CalendarComponent> components) { //sorts so oldest events are first in array
+		Collections.sort(components, new Comparator<CalendarComponent>() {
+			@Override
+			public int compare(CalendarComponent o1, CalendarComponent o2) {
+				DateTime eventDateTime1 = Utils.getDateTime(o1);
+				DateTime eventDateTime2 = Utils.getDateTime(o2);
+
+				return eventDateTime1.compareTo(eventDateTime2);
+			}
+		});
+		return components;
+	}
+	
 	public void reload() throws IOException, ParserException {
 		File file = new File(calendarFilename);
 		if(file.exists()) {
@@ -55,14 +74,30 @@ public class CalendarManager {
     	this.calendar = builder.build(fin);
     	
     	ComponentList<CalendarComponent> eventList = calendar.getComponents(Component.VEVENT);
-    	this.eventList = Utils.sortEvents(eventList);
+    	this.eventList = sortEvents(eventList);
+	}
+	
+	public ArrayList<CalendarComponent> getEventsForNext(long scopeDepthInMs) {
+		ArrayList<CalendarComponent> eventsInScope = new ArrayList<>();
+		long minScopeInEpoch = System.currentTimeMillis(); //current time
+		long maxScopeInEpoch = minScopeInEpoch+scopeDepthInMs;
+		
+		for(CalendarComponent component : eventList) {
+			DateTime eventDateTime = Utils.getDateTime(component);
+			
+			if(eventDateTime.before(new Date(maxScopeInEpoch)) && eventDateTime.after(new Date(minScopeInEpoch))) {
+				eventsInScope.add(component);
+			}
+		}
+		
+		return eventsInScope;
 	}
 	
     public CalendarComponent getNextEvent() {
    
     	for(CalendarComponent component : eventList) {
-    		DateTime eventDateTime = Utils.normalizeDateTime(component);
-    		
+    		DateTime eventDateTime = Utils.getDateTime(component);
+   	
     		try {
 				if(eventDateTime.after(new DateTime(LocalDate.now().format(DateTimeFormatter.ofPattern("YYYYMMdd"))+"T000000Z"))) {
 					return component;

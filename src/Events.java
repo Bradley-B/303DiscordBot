@@ -4,8 +4,10 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.function.Consumer;
 
 import net.fortuna.ical4j.data.ParserException;
 import net.fortuna.ical4j.model.DateTime;
@@ -21,57 +23,40 @@ public class Events {
 	public Events(CalendarManager calendarManager) {
 		this.calendarManager = calendarManager;
 	}
-
-/*
-	public void countDown() {
-		final long timeOrigin = System.currentTimeMillis();
-
-		Thread t = new Thread(() -> {
-			long timeLeft = 10000-(System.currentTimeMillis()-timeOrigin);
-			while(timeLeft>0) {
-				timeLeft =  10000-(System.currentTimeMillis()-timeOrigin);
-				long toWait = (long) (timeLeft/1.1);
-				System.out.println(timeLeft+" left");
-				try {Thread.sleep(toWait);} catch (InterruptedException e) {};
-
-			}
-
-			System.out.println("finished");
-		});
-		t.start();
-	}
-*/
 	
 	public void startCalendarNotifier(MessageReceivedEvent event) {
-		try {
-			calendarManager.reload();
-		} catch (Exception e) {}
-
-		Thread calendarNotifier = new Thread(() -> {
-			try {
+		try {calendarManager.reload();} catch (Exception e) {}
+		
+		Utils.runInNewThreadForNotifier(true, () -> { //calendar notifier thread
+			
+				ArrayList<CalendarComponent> detectedEvents = new ArrayList<>();
 				
-				CalendarComponent nextEvent = calendarManager.getNextEvent();
-				DateTime nextEventDateTime = Utils.normalizeDateTime(nextEvent);
-				DateTime currentDateTime = new DateTime(LocalDate.now().format(DateTimeFormatter.ofPattern("YYYYMMdd"))+"T000000Z");
-
-				while(!Thread.interrupted() && currentDateTime.before(nextEventDateTime)) {
-					long timeToWait = (nextEventDateTime.toInstant().getEpochSecond()-86400)-currentDateTime.toInstant().getEpochSecond();
-					System.out.println("starting wait for "+timeToWait+" seconds");
-					Thread.sleep(timeToWait);
-					BotUtils.sendMessage(event.getChannel(), "NOTICE: EVENT **"+nextEvent.getProperty(Property.NAME)+"** IS STARTING AT **"+nextEvent.getProperty(Property.DTSTART)+"**!");
-					timeToWait = (nextEventDateTime.toInstant().getEpochSecond()-3600)-currentDateTime.toInstant().getEpochSecond();
-					Thread.sleep(timeToWait);
-					BotUtils.sendMessage(event.getChannel(), "NOTICE: EVENT **"+nextEvent.getProperty(Property.NAME)+"** IS STARTING AT **"+nextEvent.getProperty(Property.DTSTART)+"**!");
+				while(!Thread.interrupted()) { //check for new events in the next day, every hour
+					ArrayList<CalendarComponent> nextDayEvents = calendarManager.getEventsForNext(86400000); //get all events in the next day
 					
-					//currentDateTime = new DateTime(LocalDate.now().format(DateTimeFormatter.ofPattern("YYYYMMdd"))+"T000000Z");
+					for(CalendarComponent component : nextDayEvents) { //for every event
+						if(!detectedEvents.contains(component) && component!=null) {
+							detectedEvents.add(component);
+							
+							Utils.runInNewThreadForNotifier(true, () -> { //new thread to announce it and wait until an hour before
+								String eventName = component.getProperty(Property.SUMMARY).getValue();
+								BotUtils.sendMessage(event.getChannel(), "**"+eventName+"** is starting at **"+Utils.getFormattedDateTime(component)+"**!");
+								
+								long eventTimeInEpochMs = Utils.getDateTime(component).toInstant().getEpochSecond()*1000L;
+								long timeToWaitInMs = eventTimeInEpochMs-System.currentTimeMillis()-3600000;
+								try {Thread.sleep(timeToWaitInMs);} catch (InterruptedException ex) {} //wait until an hour before the event
+								
+								BotUtils.sendMessage(event.getChannel(), "**"+eventName+"** is starting in an hour!");
+								
+							});
+						}
+					}
+					
+					try {Thread.sleep(3600000);} catch (InterruptedException ex) {BotUtils.sendMessage(event.getChannel(), "Shutting down notifier.");} //wait an hour
+					try {calendarManager.reload();} catch (Exception e) {} //reload the calendar to get any new events
 				}
-				
-				startCalendarNotifier(event);
-
-			} catch (Exception e) {System.err.println("wait aborted");}
 		});
-		calendarNotifier.start();
-
+		
 	}
 
 	public String reload() {
@@ -81,7 +66,7 @@ public class Events {
 		} catch (IOException | ParserException e) {return "Calendar reload error. See bot console for details.";}
 	}
 
-	public String getNextEvent(List<String> argsList) {
+	public String getNextEventString(List<String> argsList) {
 		CalendarComponent calendarEvent = calendarManager.getNextEvent();
 
 		if(calendarEvent==null) 
@@ -106,11 +91,9 @@ public class Events {
 			}
 
 		} else { //argument does not exist, run as normal
-			DateTime dateTime = Utils.normalizeDateTime(calendarEvent);
-			String formattedDateTime = new SimpleDateFormat("MM/dd/yyyy HH:mm").format(new Date(dateTime.toInstant().getEpochSecond()*1000L));
-
+			
 			return "The next event is **"+calendarEvent.getProperty(Property.SUMMARY).getValue()+
-					"** and starts at **"+formattedDateTime+
+					"** and starts at **"+Utils.getFormattedDateTime(calendarEvent)+
 					"**. Run `"+BotUtils.BOT_PREFIX+BotUtils.BOT_NAME+" nextevent desc` for more info.";
 		}
 	}
@@ -118,12 +101,12 @@ public class Events {
 	public void handleFunStuff(MessageReceivedEvent event) {
 		String message = event.getMessage().getContent();
 
-		if(message.contains("calendar bot") && (message.contains("great") || message.contains("best") || message.contains("awesome") || message.contains("love") || message.contains("my hero"))) {
+		boolean praise = message.contains("haha") || message.contains("lol") || message.contains("omg") || message.contains("great") || message.contains("best") || message.contains("awesome") || message.contains("love") || message.contains("my hero");
+		boolean name = message.contains("calendar") || message.contains("CALENDAR") || message.contains("C.A.L.E.N.D.A.R.");
+		
+		if(praise && name) {
 			BotUtils.sendMessage(event.getChannel(), Utils.getGladWord());
-		} else if(message.contains("I'm lonely")) {
-			event.getAuthor().getOrCreatePMChannel().sendMessage("hey there");
-		} else if(message.contains("when will my husband return from the war")) {
-			event.getAuthor().getOrCreatePMChannel().sendMessage("I have some bad news");
+			event.getMessage().addReaction(":heart:");
 		}
 	}
 

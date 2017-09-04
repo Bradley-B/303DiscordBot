@@ -1,4 +1,6 @@
 import sx.blah.discord.api.IDiscordClient;
+import sx.blah.discord.handle.obj.IChannel;
+import sx.blah.discord.handle.obj.IGuild;
 
 public class MainRunner {
 
@@ -17,6 +19,11 @@ public class MainRunner {
         // Only login after all events are registered otherwise some may be missed.
         cli.login();
 
+        try {Thread.sleep(5000);} catch (InterruptedException e) {}
+        IGuild guild = cli.getGuilds().get(0);
+        IChannel channel = guild.getChannels().get(0);
+        channel.sendMessage("beep beep lettuce I'm the real slim shady and I'm here to announce all your events :rocket: ");
+        
     }
 
 }

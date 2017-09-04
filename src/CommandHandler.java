@@ -14,8 +14,8 @@ public class CommandHandler {
     // Statically populate the commandMap with the intended functionality
     public CommandHandler() {
 
+    	//a test command to ping the bot
         commandMap.put("ping", (event, args) -> {
-        	String description = "A test command to ping the bot";
         	BotUtils.sendMessage(event.getChannel(), Utils.getPongWord()+"! Did I do it right?");
         });
 
@@ -26,13 +26,24 @@ public class CommandHandler {
         
         //Displays text containing the next event on the calendar
         commandMap.put("nextevent", (event, args) -> {
-        	BotUtils.sendMessage(event.getChannel(), events.getNextEvent(args));
+        	BotUtils.sendMessage(event.getChannel(), events.getNextEventString(args));
         });
         
         //starts the notifier for new events
-        commandMap.put("test", (event, args) -> {
+        commandMap.put("startnotifier", (event, args) -> {
         	events.startCalendarNotifier(event);
+        	BotUtils.sendMessage(event.getChannel(), "Notifier started.");
         });
+        
+        //stop the notifier for new events
+        commandMap.put("stopnotifier", (event, args) -> {
+        	Utils.shutdownCalendarNotifier();
+        });
+        
+        commandMap.put("info", (event, args) -> {
+        	BotUtils.sendMessage(event.getChannel(), "I love checking the 303 calendar. I'm the best at it. Ask anyone. No one checks the calendar better than me.");
+        });      
+        
     }
 
     @EventSubscriber
@@ -46,6 +57,9 @@ public class CommandHandler {
         // Given a message "/test arg1 arg2", argArray will contain ["/test", "arg1", "arg"]
         String[] argArray = event.getMessage().getContent().split(" ");
 
+        //Do simple manual stuff not involving the HashMap
+        events.handleFunStuff(event);
+        
         // First ensure at least the invocation, command, and prefix are present
         if(argArray.length < 2)
             return;
@@ -60,9 +74,6 @@ public class CommandHandler {
         // Load the rest of the args in the array into a List for safer access
         List<String> argsList = new ArrayList<>(Arrays.asList(argArray));
         argsList.remove(0); // Remove the invocation
-        
-        //Do simple manual stuff not involving the HashMap
-        events.handleFunStuff(event);
         
         // Instead of delegating the work to a switch, automatically do it via calling the mapping if it exists
         if(commandMap.containsKey(commandStr)) {
