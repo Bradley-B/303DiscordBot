@@ -42,7 +42,11 @@ public class CommandHandler {
         
         commandMap.put("info", (event, args) -> {
         	BotUtils.sendMessage(event.getChannel(), "I love checking the 303 calendar. I'm the best at it. Ask anyone. No one checks the calendar better than me.");
-        });      
+        });
+        
+        commandMap.put("nextevents", (event, args) -> {
+        	BotUtils.sendMessage(event.getChannel(), events.getStringForNextEvents(args));
+        });
         
     }
 
@@ -60,7 +64,7 @@ public class CommandHandler {
         //Do simple manual stuff not involving the HashMap
         events.handleFunStuff(event);
         
-        // First ensure at least the invocation, command, and prefix are present
+        // First ensure at least the invocation and command are present
         if(argArray.length < 2)
             return;
         

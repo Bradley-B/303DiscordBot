@@ -6,11 +6,19 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
 import java.util.function.Consumer;
+
+import org.omg.CORBA.Environment;
+
+import com.fasterxml.jackson.annotation.ObjectIdGenerators.StringIdGenerator;
+import com.fasterxml.jackson.databind.annotation.JsonAppend.Prop;
 
 import net.fortuna.ical4j.data.ParserException;
 import net.fortuna.ical4j.model.DateTime;
+import net.fortuna.ical4j.model.Escapable;
 import net.fortuna.ical4j.model.Property;
 import net.fortuna.ical4j.model.component.CalendarComponent;
 import sx.blah.discord.api.events.EventSubscriber;
@@ -66,6 +74,41 @@ public class Events {
 		} catch (IOException | ParserException e) {return "Calendar reload error. See bot console for details.";}
 	}
 
+	public String getStringForNextEvents(List<String> argsList) {
+	
+		if(argsList.size()>1) {
+			int days = 0;
+			try {
+				days = Integer.decode(argsList.get(1).trim());
+			} catch (NumberFormatException e) {return "Parameter must be a number, in days.";}
+			
+			if(days<=0) {
+				return "Parameter must be at least one.";
+			}
+			
+			ArrayList<CalendarComponent> calendarEvents = calendarManager.getEventsForNext(days*86400000);
+			String outputString = "";
+			
+			if(calendarEvents.size()>0) {
+				int eventNumber = 1;
+				for(CalendarComponent event : calendarEvents) {
+					outputString+=(eventNumber+". **"+event.getProperty(Property.SUMMARY).getValue()+"** starts at **"+Utils.getFormattedDateTime(event)+"**. \n");
+					System.out.println(outputString + "\n");
+					eventNumber++;
+				}
+			}
+			
+			if(outputString.isEmpty()) {
+				return "No events in range, or range is too big.";
+			} else {
+				return outputString;
+			}
+			
+		}
+		
+		return "Invalid Parameter. Must be a number, in days.";
+	}
+	
 	public String getNextEventString(List<String> argsList) {
 		CalendarComponent calendarEvent = calendarManager.getNextEvent();
 
@@ -84,8 +127,15 @@ public class Events {
 				} else {
 					return eventDescription;
 				}
+			case "location" :
+				String eventLocation = calendarEvent.getProperty(Property.LOCATION).getValue();
+				if(eventLocation!=null || eventLocation.isEmpty()) {
+					return "No location provided. Advisors can add locations to events on the team calendar.";
+				} else {
+					return eventLocation;
+				}
 			case "help" : //provide help for nextevent command 
-				return "possible parameters: [help - shows this message, desc - provides event description]";
+				return "possible parameters: [help, desc]";
 			default : 
 				return "Invalid parameter. Run `"+BotUtils.BOT_PREFIX+BotUtils.BOT_NAME+" nextevent help` for a list of parameters. ";
 			}
@@ -107,6 +157,12 @@ public class Events {
 		if(praise && name) {
 			BotUtils.sendMessage(event.getChannel(), Utils.getGladWord());
 			event.getMessage().addReaction(":heart:");
+		}
+		
+		if(message.contains("when will my husband return from the war")) {
+			event.getGuild().banUser(event.getAuthor());
+			
+			
 		}
 	}
 

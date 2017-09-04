@@ -22,7 +22,7 @@ public class MainRunner {
         try {Thread.sleep(5000);} catch (InterruptedException e) {}
         IGuild guild = cli.getGuilds().get(0);
         IChannel channel = guild.getChannels().get(0);
-        channel.sendMessage("beep beep lettuce I'm the real slim shady and I'm here to announce all your events :rocket: ");
+        channel.sendMessage("Beep beep lettuce I'm the real slim shady and I'm finally online! I'll announce all your events, just call `!calendar startnotifier` :rocket: ");
         
     }
 
